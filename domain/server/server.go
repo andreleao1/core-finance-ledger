@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"pricing-simulator/domain/constants"
 	"sync"
 	"time"
 
@@ -12,16 +13,16 @@ import (
 )
 
 type Server struct {
-	clients   map[*websocket.Conn]bool
-	broadcast chan float64
-	upgrader  websocket.Upgrader
-	mu        sync.Mutex
+	clients    map[*websocket.Conn]bool
+	currencies chan map[string]float64
+	upgrader   websocket.Upgrader
+	mu         sync.Mutex
 }
 
 func NewServer() *Server {
 	return &Server{
-		clients:   make(map[*websocket.Conn]bool),
-		broadcast: make(chan float64),
+		clients:    make(map[*websocket.Conn]bool),
+		currencies: make(chan map[string]float64),
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -56,17 +57,20 @@ func (s *Server) HandleConnections(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) SimulateBitcoinPrice() {
+	fmt.Print(constants.BITCOIN)
 	price := 50000.0
 	for {
 		priceChange := rand.Float64()*2000 - 1000
 		price += priceChange
 
 		formattedPrice := fmt.Sprintf("%.2f", price)
-		log.Printf("Broadcasting new price: %s", formattedPrice)
+		log.Printf("Bitcoin new price: %s", formattedPrice)
 
 		var priceFloat float64
 		fmt.Sscanf(formattedPrice, "%f", &priceFloat)
-		s.broadcast <- priceFloat
+		bitcoinMap := make(map[string]float64)
+		bitcoinMap[constants.BITCOIN] = priceFloat
+		s.currencies <- bitcoinMap
 
 		time.Sleep(60 * time.Second)
 	}
@@ -74,7 +78,7 @@ func (s *Server) SimulateBitcoinPrice() {
 
 func (s *Server) Broadcast() {
 	for {
-		price, ok := <-s.broadcast
+		price, ok := <-s.currencies
 		if !ok {
 			log.Println("Broadcast channel closed")
 			return

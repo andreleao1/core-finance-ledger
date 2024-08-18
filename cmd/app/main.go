@@ -8,7 +8,7 @@ import (
 
 func main() {
 	srv := server.NewServer()
-	http.HandleFunc("/ws", srv.HandleConnections)
+	http.HandleFunc("/currencies", srv.HandleConnections)
 	go srv.SimulateBitcoinPrice()
 	go srv.Broadcast()
 

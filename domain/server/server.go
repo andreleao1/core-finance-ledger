@@ -83,7 +83,6 @@ func (s *Server) Broadcast() {
 			log.Println("Broadcast channel closed")
 			return
 		}
-		log.Printf("Broadcasting price: %.2f", price)
 
 		s.mu.Lock()
 		for client := range s.clients {

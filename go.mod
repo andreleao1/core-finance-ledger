@@ -1,5 +1,5 @@
-module pricing-simulator
+module core-finance-ledger
 
-go 1.21.5
+go 1.23.1
 
-require github.com/gorilla/websocket v1.5.3 // indirect
+require github.com/gorilla/websocket v1.5.3

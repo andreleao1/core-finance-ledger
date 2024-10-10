@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"core-finance-ledger/internal/adapters/cache"
 	"log"
 	"net/http"
 	"sync"
@@ -13,9 +14,10 @@ type WebSocketHandler struct {
 	currencies chan map[string]float64
 	upgrader   websocket.Upgrader
 	mu         sync.Mutex
+	cache      *cache.RedisCache
 }
 
-func NewWebSocketHandler(currencies chan map[string]float64) *WebSocketHandler {
+func NewWebSocketHandler(currencies chan map[string]float64, redis *cache.RedisCache) *WebSocketHandler {
 	return &WebSocketHandler{
 		clients:    make(map[*websocket.Conn]bool),
 		currencies: currencies,
@@ -23,6 +25,7 @@ func NewWebSocketHandler(currencies chan map[string]float64) *WebSocketHandler {
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
 		},
+		cache: redis,
 	}
 }
 
@@ -39,6 +42,24 @@ func (h *WebSocketHandler) HandleConnections(w http.ResponseWriter, r *http.Requ
 	h.mu.Unlock()
 
 	log.Println("Client connected")
+
+	// Send a welcome message to the client
+	lastBitcoinPrice, err := h.cache.GetBitcoinPrice()
+
+	if err != nil {
+		log.Printf("Failed to get last bitcoin price from cache")
+		return
+	}
+
+	lastUpdatedPrice := map[string]float64{"Bitcoin": lastBitcoinPrice}
+	err = ws.WriteJSON(lastUpdatedPrice)
+	if err != nil {
+		log.Printf("Error sending cacheble bitcoin price to client: %v", err)
+		h.mu.Lock()
+		delete(h.clients, ws)
+		h.mu.Unlock()
+		return
+	}
 
 	for {
 		_, _, err := ws.ReadMessage()

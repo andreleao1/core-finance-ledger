@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"core-finance-ledger/internal/adapters/cache"
+	"core-finance-ledger/internal/domain/entity/currencies"
 	"fmt"
 	"log"
 	"math/rand"
@@ -9,24 +11,21 @@ import (
 
 const CURRENCY_NAME = "Bitcoin"
 
-type PriceSimulator struct {
-	price float64
+type BitcoinUsecase struct {
+	currency currencies.Bitcoin
+	cache    *cache.RedisCache
 }
 
-func NewPriceSimulator() *PriceSimulator {
-	return &PriceSimulator{
-		price: 339687.03, // Preço inicial do Bitcoin
-	}
+func NewBitcoinUsecase(redisCahse *cache.RedisCache) *BitcoinUsecase {
+	return &BitcoinUsecase{currency: currencies.NewBitcoin(), cache: redisCahse}
 }
 
-// Simula a variação do preço do Bitcoin entre -0,21% e +0,21%
-func (ps *PriceSimulator) SimulateBitcoinPrice() map[string]float64 {
-	// Variação percentual entre -0,21% e +0,21%
+func (buc *BitcoinUsecase) SimulateBitcoinPrice() map[string]float64 {
 	percentageChange := (rand.Float64()*0.42 - 0.21) / 100
-	priceChange := ps.price * percentageChange
-	ps.price += priceChange
+	priceChange := buc.currency.Price * percentageChange
+	buc.currency.Price += priceChange
 
-	formattedPrice := fmt.Sprintf("%.2f", ps.price)
+	formattedPrice := fmt.Sprintf("%.2f", buc.currency.Price)
 	log.Printf("Bitcoin new price: %s", formattedPrice)
 
 	var priceFloat float64
@@ -37,10 +36,19 @@ func (ps *PriceSimulator) SimulateBitcoinPrice() map[string]float64 {
 	}
 }
 
-func (ps *PriceSimulator) StartPriceSimulation(currencies chan map[string]float64) {
+func (buc *BitcoinUsecase) StartPriceSimulation(currencies chan map[string]float64) {
 	for {
-		price := ps.SimulateBitcoinPrice()
+		price := buc.SimulateBitcoinPrice()
+		buc.saveToCache(price[buc.currency.CurrencyName])
 		currencies <- price
-		time.Sleep(60 * time.Second) // Simula a cada 60 segundos
+		time.Sleep(60 * time.Second)
+	}
+}
+
+func (buc *BitcoinUsecase) saveToCache(bitcoinPrice float64) {
+	err := buc.cache.SaveBitcoinPrice(bitcoinPrice)
+
+	if err != nil {
+		log.Printf("Failed to save bitcoin price in cache")
 	}
 }

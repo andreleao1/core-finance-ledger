@@ -1,4 +1,4 @@
-# Bitcoin Pricing WebSocket Platform 
+# Bitcoin Pricing WebSocket Platform  
 
 ## Description
 A Go-based platform that provides real-time Bitcoin pricing information via a WebSocket channel. This platform allows clients to connect and receive live updates on Bitcoin prices.
